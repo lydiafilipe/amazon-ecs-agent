@@ -41,6 +41,7 @@ import (
 // If the ExecCommandAgent is still running (or has never started), no action is taken.
 // To actually restart the ExecCommandAgent, this function invokes this instance's StartAgent method.
 func (m *manager) RestartAgentIfStopped(ctx context.Context, client dockerapi.DockerClient, task *apitask.Task, container *apicontainer.Container, containerId string) (RestartStatus, error) {
+	seelog.Info("Restarting if stopped")
 	if !IsExecEnabledContainer(container) {
 		seelog.Warnf("Task engine [%s]: an attempt to restart ExecCommandAgent for a non ExecCommandAgent-enabled container was made; container %s", task.Arn, containerId)
 		return NotRestarted, nil
@@ -48,14 +49,17 @@ func (m *manager) RestartAgentIfStopped(ctx context.Context, client dockerapi.Do
 	ma, _ := container.GetManagedAgentByName(ExecuteCommandAgentName)
 	metadata := MapToAgentMetadata(ma.Metadata)
 	if !m.isAgentStarted(ma) {
+		seelog.Info("Manager not started")
 		return NotRestarted, nil
 	}
 	res, err := m.inspectExecAgentProcess(ctx, client, metadata)
 	if err != nil || res == nil {
+		seelog.Infof("Unknown: error is %v res is %v", err, res)
 		// We don't want to report InspectContainerExec errors, just that we don't know what the status of the agent is
 		return Unknown, nil
 	}
 	if res.Running { // agent still running, nothing to do
+		seelog.Info("Running???")
 		return NotRestarted, nil
 	}
 	// Restart if not running

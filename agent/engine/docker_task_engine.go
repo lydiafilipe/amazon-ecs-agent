@@ -102,7 +102,7 @@ const (
 	FluentNetworkPortValue = "24224"
 	FluentAWSVPCHostValue  = "127.0.0.1"
 
-	defaultMonitorExecAgentsInterval = 15 * time.Minute
+	defaultMonitorExecAgentsInterval = time.Minute
 
 	defaultStopContainerBackoffMin = time.Second
 	defaultStopContainerBackoffMax = time.Second * 5
@@ -283,8 +283,10 @@ func (engine *DockerTaskEngine) startPeriodicExecAgentsMonitoring(ctx context.Co
 	for {
 		select {
 		case <-engine.monitorExecAgentsTicker.C:
+			seelog.Info("Ticker tick")
 			go engine.monitorExecAgentProcesses(ctx)
 		case <-ctx.Done():
+			seelog.Info("Ticker bye bye")
 			engine.monitorExecAgentsTicker.Stop()
 			return
 		}
@@ -297,13 +299,16 @@ func (engine *DockerTaskEngine) monitorExecAgentProcesses(ctx context.Context) {
 	defer engine.tasksLock.RUnlock()
 	for _, mTask := range engine.managedTasks {
 		task := mTask.Task
+		seelog.Infof("Task %v status is %v", task.Arn, task.GetKnownStatus())
 
 		if task.GetKnownStatus() != apitaskstatus.TaskRunning {
 			continue
 		}
 		for _, c := range task.Containers {
+			seelog.Infof("Container %v exec abed is %v", c.ContainerArn, execcmd.IsExecEnabledContainer(c))
 			if execcmd.IsExecEnabledContainer(c) {
 				if ma, _ := c.GetManagedAgentByName(execcmd.ExecuteCommandAgentName); !ma.InitFailed {
+					seelog.Info("Going to monitor running")
 					go engine.monitorExecAgentRunning(ctx, mTask, c)
 				}
 			}
@@ -313,6 +318,7 @@ func (engine *DockerTaskEngine) monitorExecAgentProcesses(ctx context.Context) {
 
 func (engine *DockerTaskEngine) monitorExecAgentRunning(ctx context.Context,
 	mTask *managedTask, c *apicontainer.Container) {
+	seelog.Infof("is container running: %v", c.IsRunning())
 	if !c.IsRunning() {
 		return
 	}
