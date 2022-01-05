@@ -841,6 +841,72 @@ func TestPostUnmarshalTaskWithEFSVolumesThatUseECSVolumePlugin(t *testing.T) {
 	  }`, expectedEndpoint, dockerVolName), string(b))
 }
 
+func TestPostUnmarshalTaskExternalCredentialsId(t *testing.T) {
+	newTask := func() *Task {
+		container := &apicontainer.Container{
+			Name:  "myName",
+			Image: "image:tag",
+		}
+		return &Task{
+			Arn:                testTaskARN,
+			ResourcesMapUnsafe: make(map[string][]taskresource.TaskResource),
+			Containers:         []*apicontainer.Container{container},
+		}
+	}
+
+	testCases := []struct {
+		name              string
+		isExternal        bool
+		awslogsAvailable  bool
+		shouldSetEndpoint bool
+	}{
+		{
+			name:              "test external id set",
+			isExternal:        true,
+			awslogsAvailable:  true,
+			shouldSetEndpoint: true,
+		},
+		{
+			name:              "test external id not set if not external",
+			isExternal:        false,
+			awslogsAvailable:  true,
+			shouldSetEndpoint: false,
+		},
+		{
+			name:              "test external id not set if awslogs not available",
+			isExternal:        true,
+			awslogsAvailable:  false,
+			shouldSetEndpoint: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := &config.Config{}
+			if tc.isExternal {
+				cfg.External.Value = config.ExplicitlyEnabled
+			}
+			if tc.awslogsAvailable {
+				cfg.AvailableLoggingDrivers = append(cfg.AvailableLoggingDrivers, dockerclient.AWSLogsDriver)
+			}
+
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			credentialsManager := mock_credentials.NewMockManager(ctrl)
+			if tc.shouldSetEndpoint {
+				credentialsManager.EXPECT().SetTaskExternalCredentialsId(gomock.Any())
+			}
+			task := newTask()
+			task.PostUnmarshalTask(cfg, credentialsManager, nil, nil, nil)
+			if tc.shouldSetEndpoint {
+				assert.NotEmpty(t, task.GetExternalInstanceCredentialsID())
+			} else {
+				assert.Empty(t, task.GetExternalInstanceCredentialsID())
+			}
+		})
+	}
+}
+
 func TestInitializeContainersV3MetadataEndpoint(t *testing.T) {
 	task := Task{
 		Containers: []*apicontainer.Container{

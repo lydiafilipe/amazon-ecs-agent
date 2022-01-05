@@ -116,6 +116,7 @@ func TestMarshalTaskVolumesEFS(t *testing.T) {
 		"PullStartedAt": "0001-01-01T00:00:00Z",
 		"PullStoppedAt": "0001-01-01T00:00:00Z",
 		"ExecutionStoppedAt": "0001-01-01T00:00:00Z",
+		"ExternalInstanceCredentialsID":"",
 		"SentStatus": "NONE",
 		"StartSequenceNumber": 0,
 		"StopSequenceNumber": 0,

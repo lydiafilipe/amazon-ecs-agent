@@ -20,4 +20,8 @@ type Manager interface {
 	SetTaskCredentials(*TaskIAMRoleCredentials) error
 	GetTaskCredentials(string) (TaskIAMRoleCredentials, bool)
 	RemoveCredentials(string)
+
+	SetTaskExternalCredentialsId(string)
+	ValidateExternalCredentialsId(string) bool
+	RemoveExternalCredentialsId(id string)
 }

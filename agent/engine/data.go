@@ -56,6 +56,10 @@ func (engine *DockerTaskEngine) loadTasks() error {
 		if ip := task.GetLocalIPAddress(); ip != "" {
 			engine.state.AddTaskIPAddress(ip, task.Arn)
 		}
+
+		if externalInstanceCredsId := task.GetExternalInstanceCredentialsID(); externalInstanceCredsId != "" {
+			engine.credentialsManager.SetTaskExternalCredentialsId(externalInstanceCredsId)
+		}
 	}
 	return nil
 }

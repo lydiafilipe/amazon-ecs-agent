@@ -24,6 +24,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pborman/uuid"
+
 	"github.com/aws/amazon-ecs-agent/agent/logger"
 	"github.com/aws/amazon-ecs-agent/agent/logger/field"
 	"github.com/aws/amazon-ecs-agent/agent/utils/ttime"
@@ -90,9 +92,6 @@ const (
 	// container's option (network, ipc, or pid) to that of another existing container
 	dockerMappingContainerPrefix = "container:"
 
-	// awslogsCredsEndpointOpt is the awslogs option that is used to pass in an
-	// http endpoint for authentication
-	awslogsCredsEndpointOpt = "awslogs-credentials-endpoint"
 	// These contants identify the docker flag options
 	pidModeHost     = "host"
 	pidModeTask     = "task"
@@ -230,6 +229,12 @@ type Task struct {
 	credentialsID                string
 	credentialsRelativeURIUnsafe string
 
+	// ExternalInstanceCredentialsID is an identifier stored with the task for the external instance credentials (if applicable).
+	// This is mainly used by the external instance credentials endpoint, which is used by the awslogs driver to obtain credentials
+	// for external instances. This field is used to ensure the endpoint is only used for tasks that require it.
+	// Note that since the creds are for the instance, creds returned by the endpoint are the same for each task
+	ExternalInstanceCredentialsID string
+
 	// ENIs is the list of Elastic Network Interfaces assigned to this task. The
 	// TaskENIs type is helpful when decoding state files which might have stored
 	// ENIs as a single ENI object instead of a list.
@@ -348,6 +353,11 @@ func (task *Task) PostUnmarshalTask(cfg *config.Config,
 	task.initSecretResources(credentialsManager, resourceFields)
 
 	task.initializeCredentialsEndpoint(credentialsManager)
+
+	if credentials.ShouldSetExternalCredsEndpoint(cfg) {
+		task.ExternalInstanceCredentialsID = uuid.New()
+		credentialsManager.SetTaskExternalCredentialsId(task.ExternalInstanceCredentialsID)
+	}
 
 	// NOTE: initializeVolumes needs to be after initializeCredentialsEndpoint, because EFS volume might
 	// need the credentials endpoint constructed by it.
@@ -1448,7 +1458,7 @@ func (task *Task) ApplyExecutionRoleLogsAuth(hostConfig *dockercontainer.HostCon
 	if hostConfig.LogConfig.Config == nil {
 		hostConfig.LogConfig.Config = map[string]string{}
 	}
-	hostConfig.LogConfig.Config[awslogsCredsEndpointOpt] = credentialsEndpointRelativeURI
+	hostConfig.LogConfig.Config[credentials.AwslogsCredsEndpointOpt] = credentialsEndpointRelativeURI
 	return nil
 }
 
@@ -2051,6 +2061,26 @@ func (task *Task) GetExecutionCredentialsID() string {
 	defer task.lock.RUnlock()
 
 	return task.ExecutionCredentialsID
+}
+
+// SetExternalInstanceCredentialsID sets the external instance credentials id for the task
+// if it is not already set. Returns true if the id changed, false if not
+func (task *Task) SetExternalInstanceCredentialsID(id string) bool {
+	task.lock.Lock()
+	defer task.lock.Unlock()
+	if task.ExternalInstanceCredentialsID == "" {
+		task.ExternalInstanceCredentialsID = id
+		return true
+	}
+	return false
+}
+
+// GetExternalInstanceCredentialsID gets the external instance credentials id for the task
+func (task *Task) GetExternalInstanceCredentialsID() string {
+	task.lock.RLock()
+	defer task.lock.RUnlock()
+
+	return task.ExternalInstanceCredentialsID
 }
 
 // GetDesiredStatus gets the desired status of the task

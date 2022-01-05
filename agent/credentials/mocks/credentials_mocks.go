@@ -75,6 +75,18 @@ func (mr *MockManagerMockRecorder) RemoveCredentials(arg0 interface{}) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveCredentials", reflect.TypeOf((*MockManager)(nil).RemoveCredentials), arg0)
 }
 
+// RemoveExternalCredentialsId mocks base method
+func (m *MockManager) RemoveExternalCredentialsId(arg0 string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "RemoveExternalCredentialsId", arg0)
+}
+
+// RemoveExternalCredentialsId indicates an expected call of RemoveExternalCredentialsId
+func (mr *MockManagerMockRecorder) RemoveExternalCredentialsId(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveExternalCredentialsId", reflect.TypeOf((*MockManager)(nil).RemoveExternalCredentialsId), arg0)
+}
+
 // SetTaskCredentials mocks base method
 func (m *MockManager) SetTaskCredentials(arg0 *credentials.TaskIAMRoleCredentials) error {
 	m.ctrl.T.Helper()
@@ -87,4 +99,30 @@ func (m *MockManager) SetTaskCredentials(arg0 *credentials.TaskIAMRoleCredential
 func (mr *MockManagerMockRecorder) SetTaskCredentials(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTaskCredentials", reflect.TypeOf((*MockManager)(nil).SetTaskCredentials), arg0)
+}
+
+// SetTaskExternalCredentialsId mocks base method
+func (m *MockManager) SetTaskExternalCredentialsId(arg0 string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetTaskExternalCredentialsId", arg0)
+}
+
+// SetTaskExternalCredentialsId indicates an expected call of SetTaskExternalCredentialsId
+func (mr *MockManagerMockRecorder) SetTaskExternalCredentialsId(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTaskExternalCredentialsId", reflect.TypeOf((*MockManager)(nil).SetTaskExternalCredentialsId), arg0)
+}
+
+// ValidateExternalCredentialsId mocks base method
+func (m *MockManager) ValidateExternalCredentialsId(arg0 string) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ValidateExternalCredentialsId", arg0)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// ValidateExternalCredentialsId indicates an expected call of ValidateExternalCredentialsId
+func (mr *MockManagerMockRecorder) ValidateExternalCredentialsId(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateExternalCredentialsId", reflect.TypeOf((*MockManager)(nil).ValidateExternalCredentialsId), arg0)
 }

@@ -20,6 +20,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/aws/amazon-ecs-agent/agent/credentials"
+
 	apicontainer "github.com/aws/amazon-ecs-agent/agent/api/container"
 	apicontainerstatus "github.com/aws/amazon-ecs-agent/agent/api/container/status"
 	"github.com/aws/amazon-ecs-agent/agent/api/eni"
@@ -33,12 +35,13 @@ import (
 )
 
 const (
-	testContainerName = "test-name"
-	testImageId       = "test-imageId"
-	testMac           = "test-mac"
-	testAttachmentArn = "arn:aws:ecs:us-west-2:1234567890:attachment/abc"
-	testDockerID      = "test-docker-id"
-	testTaskIP        = "10.1.2.3"
+	testContainerName           = "test-name"
+	testImageId                 = "test-imageId"
+	testMac                     = "test-mac"
+	testAttachmentArn           = "arn:aws:ecs:us-west-2:1234567890:attachment/abc"
+	testDockerID                = "test-docker-id"
+	testTaskIP                  = "10.1.2.3"
+	testExternalInstanceCredsId = "test-external-creds-id"
 )
 
 var (
@@ -65,9 +68,10 @@ var (
 		LocalIPAddressUnsafe: testTaskIP,
 	}
 	testTaskWithPulledContainer = &apitask.Task{
-		Arn:                  testTaskARN,
-		Containers:           []*apicontainer.Container{testContainer, testPulledContainer},
-		LocalIPAddressUnsafe: testTaskIP,
+		Arn:                           testTaskARN,
+		Containers:                    []*apicontainer.Container{testContainer, testPulledContainer},
+		LocalIPAddressUnsafe:          testTaskIP,
+		ExternalInstanceCredentialsID: testExternalInstanceCredsId,
 	}
 	testImageState = &image.ImageState{
 		Image:         testImage,
@@ -100,10 +104,12 @@ func newTestDataClient(t *testing.T) (data.Client, func()) {
 func TestLoadState(t *testing.T) {
 	dataClient, cleanup := newTestDataClient(t)
 	defer cleanup()
+	credentialsManager := credentials.NewManager()
 
 	engine := &DockerTaskEngine{
-		state:      dockerstate.NewTaskEngineState(),
-		dataClient: dataClient,
+		state:              dockerstate.NewTaskEngineState(),
+		dataClient:         dataClient,
+		credentialsManager: credentialsManager,
 	}
 	require.NoError(t, dataClient.SaveTask(testTaskWithPulledContainer))
 	testDockerContainer.Container.SetKnownStatus(apicontainerstatus.ContainerRunning)
@@ -133,6 +139,8 @@ func TestLoadState(t *testing.T) {
 	arn, ok := engine.state.GetTaskByIPAddress(testTaskIP)
 	require.True(t, ok)
 	assert.Equal(t, testTaskARN, arn)
+
+	assert.True(t, credentialsManager.ValidateExternalCredentialsId(testExternalInstanceCredsId))
 }
 
 func TestSaveState(t *testing.T) {
