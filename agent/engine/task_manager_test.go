@@ -1029,6 +1029,7 @@ func TestCleanupTask(t *testing.T) {
 	mockState := mock_dockerstate.NewMockTaskEngineState(ctrl)
 	mockClient := mock_dockerapi.NewMockDockerClient(ctrl)
 	mockImageManager := mock_engine.NewMockImageManager(ctrl)
+	mockCredentialsManager := mock_credentials.NewMockManager(ctrl)
 	mockResource := mock_taskresource.NewMockTaskResource(ctrl)
 	defer ctrl.Finish()
 
@@ -1036,12 +1037,13 @@ func TestCleanupTask(t *testing.T) {
 	defer cancel()
 
 	taskEngine := &DockerTaskEngine{
-		ctx:          ctx,
-		cfg:          &cfg,
-		dataClient:   data.NewNoopClient(),
-		state:        mockState,
-		client:       mockClient,
-		imageManager: mockImageManager,
+		ctx:                ctx,
+		cfg:                &cfg,
+		dataClient:         data.NewNoopClient(),
+		state:              mockState,
+		client:             mockClient,
+		imageManager:       mockImageManager,
+		credentialsManager: mockCredentialsManager,
 	}
 	mTask := &managedTask{
 		ctx:                      ctx,
@@ -1052,9 +1054,11 @@ func TestCleanupTask(t *testing.T) {
 		acsMessages:              make(chan acsTransition),
 		dockerMessages:           make(chan dockerContainerChange),
 		resourceStateChangeEvent: make(chan resourceStateChange),
+		credentialsManager:       mockCredentialsManager,
 		cfg:                      taskEngine.cfg,
 	}
 	mTask.Task.ResourcesMapUnsafe = make(map[string][]taskresource.TaskResource)
+	mTask.Task.ExternalInstanceCredentialsID = "externalInstanceCredsId"
 	mTask.AddResource("mockResource", mockResource)
 	mTask.SetKnownStatus(apitaskstatus.TaskStopped)
 	mTask.SetSentStatus(apitaskstatus.TaskStopped)
@@ -1076,6 +1080,7 @@ func TestCleanupTask(t *testing.T) {
 	// Expectations to verify that the task gets removed
 	mockState.EXPECT().ContainerMapByArn(mTask.Arn).Return(map[string]*apicontainer.DockerContainer{container.Name: dockerContainer}, true)
 	mockClient.EXPECT().RemoveContainer(gomock.Any(), dockerContainer.DockerName, gomock.Any()).Return(nil)
+	mockCredentialsManager.EXPECT().RemoveExternalCredentialsId("externalInstanceCredsId")
 	mockImageManager.EXPECT().RemoveContainerReferenceFromImageState(container).Return(nil)
 	mockState.EXPECT().RemoveTask(mTask.Task)
 	mockResource.EXPECT().Cleanup()

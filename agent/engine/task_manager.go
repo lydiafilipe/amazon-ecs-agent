@@ -1426,6 +1426,7 @@ func (mtask *managedTask) time() ttime.Time {
 
 func (mtask *managedTask) cleanupTask(taskStoppedDuration time.Duration) {
 	taskExecutionCredentialsID := mtask.GetExecutionCredentialsID()
+	taskExternalCredentialsID := mtask.ExternalInstanceCredentialsID
 	cleanupTimeDuration := mtask.GetKnownStatusTime().Add(taskStoppedDuration).Sub(ttime.Now())
 	cleanupTime := make(<-chan time.Time)
 	if cleanupTimeDuration < 0 {
@@ -1472,6 +1473,10 @@ func (mtask *managedTask) cleanupTask(taskStoppedDuration time.Duration) {
 			field.TaskARN: mtask.Arn,
 		})
 		mtask.credentialsManager.RemoveCredentials(taskExecutionCredentialsID)
+	}
+
+	if taskExternalCredentialsID != "" {
+		mtask.credentialsManager.RemoveExternalCredentialsId(taskExternalCredentialsID)
 	}
 
 	// The last thing to do here is to cancel the context, which should cancel

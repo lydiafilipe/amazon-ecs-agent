@@ -3577,3 +3577,119 @@ func TestCreateContainerWithExecAgent(t *testing.T) {
 		})
 	}
 }
+
+func TestAWSLogCredsEndpointExternal(t *testing.T) {
+	executionRoleCredentials := credentials.IAMRoleCredentials{}
+	createTask := func(hasExecutionRole bool, awslogsSupport bool) *apitask.Task {
+		logType := "awslogs"
+		if !awslogsSupport {
+			logType = "json-file"
+		}
+		rawHostConfigInput := dockercontainer.HostConfig{
+			LogConfig: dockercontainer.LogConfig{
+				Type: logType,
+				Config: map[string]string{
+					"key1": "value1",
+				},
+			},
+		}
+		rawHostConfig, err := json.Marshal(&rawHostConfigInput)
+		require.NoError(t, err)
+		task := &apitask.Task{
+			Arn:     testTaskARN,
+			Version: "1",
+			Family:  "myFamily",
+			Containers: []*apicontainer.Container{
+				{
+					Name: "taskName",
+					DockerConfig: apicontainer.DockerConfig{
+						HostConfig: func() *string {
+							s := string(rawHostConfig)
+							return &s
+						}(),
+					},
+				},
+			},
+		}
+		if hasExecutionRole {
+			task.SetExecutionRoleCredentialsID(credentialsID)
+			task.Containers[0].LogsAuthStrategy = "ExecutionRole"
+		}
+		return task
+	}
+
+	testcases := []struct {
+		name             string
+		expectedPath     string
+		hasExecutionRole bool
+		isExternal       bool
+		awslogsSupport   bool
+	}{
+		{
+			name:             "awslogs endpoint uses execution role credentials",
+			expectedPath:     credentials.V2CredentialsPath,
+			hasExecutionRole: true,
+			isExternal:       true,
+			awslogsSupport:   true,
+		},
+		{
+			name:             "awslogs endpoint uses external instance credentials",
+			expectedPath:     credentials.ExternalInstanceCredsPath,
+			hasExecutionRole: false,
+			isExternal:       true,
+			awslogsSupport:   true,
+		},
+		{
+			name:             "awslogs endpoint not set if not external",
+			expectedPath:     "",
+			hasExecutionRole: false,
+			isExternal:       false,
+			awslogsSupport:   true,
+		},
+		{
+			name:             "awslogs endpoint not set if awslogs not supported",
+			expectedPath:     "",
+			hasExecutionRole: false,
+			isExternal:       true,
+			awslogsSupport:   false,
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := config.DefaultConfig()
+			if tc.isExternal {
+				cfg.External = config.BooleanDefaultFalse{Value: config.ExplicitlyEnabled}
+			}
+			if tc.awslogsSupport {
+				cfg.AvailableLoggingDrivers = append(cfg.AvailableLoggingDrivers, dockerclient.AWSLogsDriver)
+			}
+
+			ctx, cancel := context.WithCancel(context.TODO())
+			defer cancel()
+			ctrl, client, _, taskEngine, credentialsManager, _, _ := mocks(t, ctx, &cfg)
+			defer ctrl.Finish()
+
+			task := createTask(tc.hasExecutionRole, tc.awslogsSupport)
+			if tc.hasExecutionRole {
+				credentialsManager.EXPECT().GetTaskCredentials(credentialsID).Return(credentials.TaskIAMRoleCredentials{
+					ARN:                "",
+					IAMRoleCredentials: executionRoleCredentials,
+				}, true)
+			}
+
+			client.EXPECT().APIVersion().Return(defaultDockerClientAPIVersion, nil).AnyTimes()
+			client.EXPECT().CreateContainer(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Do(
+				func(ctx context.Context,
+					config *dockercontainer.Config,
+					hostConfig *dockercontainer.HostConfig,
+					name string,
+					timeout time.Duration) {
+					assert.Contains(t, hostConfig.LogConfig.Config[credentials.AwslogsCredsEndpointOpt], tc.expectedPath)
+					assert.Equal(t, hostConfig.LogConfig.Config["key1"], "value1")
+				})
+			ret := taskEngine.(*DockerTaskEngine).createContainer(task, task.Containers[0])
+			assert.NoError(t, ret.Error)
+		})
+	}
+}

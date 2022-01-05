@@ -17,6 +17,9 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/aws/amazon-ecs-agent/agent/config"
+	"github.com/aws/amazon-ecs-agent/agent/dockerclient"
+
 	"github.com/aws/amazon-ecs-agent/agent/acs/model/ecsacs"
 	"github.com/aws/aws-sdk-go/aws"
 )
@@ -46,6 +49,14 @@ const (
 	// ExecutionRoleType specifies the credentials used for non task application
 	// uses
 	ExecutionRoleType = "TaskExecution"
+
+	// AwslogsCredsEndpointOpt is the awslogs option that is used to pass in an
+	// http endpoint for authentication
+	AwslogsCredsEndpointOpt = "awslogs-credentials-endpoint"
+
+	// ExternalInstanceCredsPath is the path for the endpoint where instance credentials are exposed for the docker
+	// engine to use
+	ExternalInstanceCredsPath = "/v1/external-instance-creds"
 )
 
 // IAMRoleCredentials is used to save credentials sent by ACS
@@ -92,6 +103,10 @@ type credentialsManager struct {
 	// idToTaskCredentials maps credentials id to its corresponding TaskIAMRoleCredentials object
 	idToTaskCredentials map[string]TaskIAMRoleCredentials
 	taskCredentialsLock sync.RWMutex
+	// externalInstanceCredentialsId is a random identifier to associate with external instance creds, if applicable
+	// Primarily used for the external instance credentials handler
+	taskIdToExternalCredential map[string]bool
+	externalCredentialsLock    sync.RWMutex
 }
 
 // IAMRoleCredentialsFromACS translates ecsacs.IAMRoleCredentials object to
@@ -108,10 +123,21 @@ func IAMRoleCredentialsFromACS(roleCredentials *ecsacs.IAMRoleCredentials, roleT
 	}
 }
 
+func ShouldSetExternalCredsEndpoint(cfg *config.Config) bool {
+	var awslogsAvailable bool
+	for _, driver := range cfg.AvailableLoggingDrivers {
+		if driver == dockerclient.AWSLogsDriver {
+			awslogsAvailable = true
+		}
+	}
+	return cfg.External.Enabled() && awslogsAvailable
+}
+
 // NewManager creates a new credentials manager object
 func NewManager() Manager {
 	return &credentialsManager{
-		idToTaskCredentials: make(map[string]TaskIAMRoleCredentials),
+		idToTaskCredentials:        make(map[string]TaskIAMRoleCredentials),
+		taskIdToExternalCredential: make(map[string]bool),
 	}
 }
 
@@ -161,4 +187,27 @@ func (manager *credentialsManager) RemoveCredentials(id string) {
 	defer manager.taskCredentialsLock.Unlock()
 
 	delete(manager.idToTaskCredentials, id)
+}
+
+// TODO
+
+func (manager *credentialsManager) SetTaskExternalCredentialsId(credentialsId string) {
+	manager.externalCredentialsLock.Lock()
+	defer manager.externalCredentialsLock.Unlock()
+
+	manager.taskIdToExternalCredential[credentialsId] = true
+}
+
+func (manager *credentialsManager) ValidateExternalCredentialsId(id string) bool {
+	manager.externalCredentialsLock.RLock()
+	defer manager.externalCredentialsLock.RUnlock()
+
+	return manager.taskIdToExternalCredential[id]
+}
+
+func (manager *credentialsManager) RemoveExternalCredentialsId(id string) {
+	manager.externalCredentialsLock.RLock()
+	defer manager.externalCredentialsLock.RUnlock()
+
+	delete(manager.taskIdToExternalCredential, id)
 }

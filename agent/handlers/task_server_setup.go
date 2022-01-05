@@ -55,7 +55,8 @@ func taskServerSetup(credentialsManager credentials.Manager,
 	steadyStateRate int,
 	burstRate int,
 	availabilityZone string,
-	containerInstanceArn string) *http.Server {
+	containerInstanceArn string,
+	setExternalCredsEndpoint bool) *http.Server {
 	muxRouter := mux.NewRouter()
 
 	// Set this to false so that for request like "//v3//metadata/task"
@@ -64,6 +65,11 @@ func taskServerSetup(credentialsManager credentials.Manager,
 
 	muxRouter.HandleFunc(v1.CredentialsPath,
 		v1.CredentialsHandler(credentialsManager, auditLogger))
+
+	if setExternalCredsEndpoint {
+		muxRouter.HandleFunc(v1.ExternalInstanceCredentialsFullPath,
+			v1.ExternalInstanceCredentialsHandler(credentialsManager))
+	}
 
 	v2HandlersSetup(muxRouter, state, ecsClient, statsEngine, cluster, credentialsManager, auditLogger, availabilityZone, containerInstanceArn)
 
@@ -172,9 +178,10 @@ func ServeTaskHTTPEndpoint(
 	}
 
 	auditLogger := audit.NewAuditLog(containerInstanceArn, cfg, logger)
+	setExternalCredsEndpoint := credentials.ShouldSetExternalCredsEndpoint(cfg)
 
 	server := taskServerSetup(credentialsManager, auditLogger, state, ecsClient, cfg.Cluster, statsEngine,
-		cfg.TaskMetadataSteadyStateRate, cfg.TaskMetadataBurstRate, availabilityZone, containerInstanceArn)
+		cfg.TaskMetadataSteadyStateRate, cfg.TaskMetadataBurstRate, availabilityZone, containerInstanceArn, setExternalCredsEndpoint)
 
 	go func() {
 		<-ctx.Done()
