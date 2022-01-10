@@ -1087,7 +1087,7 @@ func (engine *DockerTaskEngine) createContainer(task *apitask.Task, container *a
 		if hostConfig.LogConfig.Config == nil {
 			hostConfig.LogConfig.Config = map[string]string{}
 		}
-		hostConfig.LogConfig.Config[credentials.AwslogsCredsEndpointOpt] = credentials.ExternalInstanceCredsPath + "/" + task.ExternalInstanceCredentialsID
+		hostConfig.LogConfig.Config[credentials.AwslogsCredsEndpointOpt] = credentials.ExternalInstanceCredsPath + "/" + task.GetExternalInstanceCredentialsID()
 	}
 
 	firelensConfig := container.GetFirelensConfig()

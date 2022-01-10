@@ -899,9 +899,9 @@ func TestPostUnmarshalTaskExternalCredentialsId(t *testing.T) {
 			task := newTask()
 			task.PostUnmarshalTask(cfg, credentialsManager, nil, nil, nil)
 			if tc.shouldSetEndpoint {
-				assert.NotEmpty(t, task.ExternalInstanceCredentialsID)
+				assert.NotEmpty(t, task.GetExternalInstanceCredentialsID())
 			} else {
-				assert.Empty(t, task.ExternalInstanceCredentialsID)
+				assert.Empty(t, task.GetExternalInstanceCredentialsID())
 			}
 		})
 	}

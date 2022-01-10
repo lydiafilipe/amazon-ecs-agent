@@ -1426,7 +1426,7 @@ func (mtask *managedTask) time() ttime.Time {
 
 func (mtask *managedTask) cleanupTask(taskStoppedDuration time.Duration) {
 	taskExecutionCredentialsID := mtask.GetExecutionCredentialsID()
-	taskExternalCredentialsID := mtask.ExternalInstanceCredentialsID
+	taskExternalCredentialsID := mtask.GetExternalInstanceCredentialsID()
 	cleanupTimeDuration := mtask.GetKnownStatusTime().Add(taskStoppedDuration).Sub(ttime.Now())
 	cleanupTime := make(<-chan time.Time)
 	if cleanupTimeDuration < 0 {

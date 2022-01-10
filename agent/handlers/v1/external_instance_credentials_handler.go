@@ -70,6 +70,6 @@ func getCredentials() (credentials.IAMRoleCredentials, error) {
 		AccessKeyID:     credsValue.AccessKeyID,
 		SecretAccessKey: credsValue.SecretAccessKey,
 		SessionToken:    credsValue.SessionToken,
-		Expiration:      expires.Format(time.RFC3339Nano), // TODO format
+		Expiration:      expires.Format(time.RFC3339Nano),
 	}, nil
 }

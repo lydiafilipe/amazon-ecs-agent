@@ -105,8 +105,8 @@ type credentialsManager struct {
 	taskCredentialsLock sync.RWMutex
 	// externalInstanceCredentialsId is a random identifier to associate with external instance creds, if applicable
 	// Primarily used for the external instance credentials handler
-	taskIdToExternalCredential map[string]bool
-	externalCredentialsLock    sync.RWMutex
+	taskExternalInstanceCredentialIds map[string]bool
+	externalCredentialsLock           sync.RWMutex
 }
 
 // IAMRoleCredentialsFromACS translates ecsacs.IAMRoleCredentials object to
@@ -136,8 +136,8 @@ func ShouldSetExternalCredsEndpoint(cfg *config.Config) bool {
 // NewManager creates a new credentials manager object
 func NewManager() Manager {
 	return &credentialsManager{
-		idToTaskCredentials:        make(map[string]TaskIAMRoleCredentials),
-		taskIdToExternalCredential: make(map[string]bool),
+		idToTaskCredentials:               make(map[string]TaskIAMRoleCredentials),
+		taskExternalInstanceCredentialIds: make(map[string]bool),
 	}
 }
 
@@ -189,25 +189,26 @@ func (manager *credentialsManager) RemoveCredentials(id string) {
 	delete(manager.idToTaskCredentials, id)
 }
 
-// TODO
-
+// SetTaskExternalCredentialsId adds the id to the tracking map for which ids are associated with tasks
 func (manager *credentialsManager) SetTaskExternalCredentialsId(credentialsId string) {
 	manager.externalCredentialsLock.Lock()
 	defer manager.externalCredentialsLock.Unlock()
 
-	manager.taskIdToExternalCredential[credentialsId] = true
+	manager.taskExternalInstanceCredentialIds[credentialsId] = true
 }
 
+// ValidateExternalCredentialsId checks that the given id is associated with a task
 func (manager *credentialsManager) ValidateExternalCredentialsId(id string) bool {
 	manager.externalCredentialsLock.RLock()
 	defer manager.externalCredentialsLock.RUnlock()
 
-	return manager.taskIdToExternalCredential[id]
+	return manager.taskExternalInstanceCredentialIds[id]
 }
 
+// RemoveExternalCredentialsId removes the given id from the manager
 func (manager *credentialsManager) RemoveExternalCredentialsId(id string) {
 	manager.externalCredentialsLock.RLock()
 	defer manager.externalCredentialsLock.RUnlock()
 
-	delete(manager.taskIdToExternalCredential, id)
+	delete(manager.taskExternalInstanceCredentialIds, id)
 }

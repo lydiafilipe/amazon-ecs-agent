@@ -1058,7 +1058,7 @@ func TestCleanupTask(t *testing.T) {
 		cfg:                      taskEngine.cfg,
 	}
 	mTask.Task.ResourcesMapUnsafe = make(map[string][]taskresource.TaskResource)
-	mTask.Task.ExternalInstanceCredentialsID = "externalInstanceCredsId"
+	mTask.Task.SetExternalInstanceCredentialsID("externalInstanceCredsId")
 	mTask.AddResource("mockResource", mockResource)
 	mTask.SetKnownStatus(apitaskstatus.TaskStopped)
 	mTask.SetSentStatus(apitaskstatus.TaskStopped)
@@ -1080,9 +1080,9 @@ func TestCleanupTask(t *testing.T) {
 	// Expectations to verify that the task gets removed
 	mockState.EXPECT().ContainerMapByArn(mTask.Arn).Return(map[string]*apicontainer.DockerContainer{container.Name: dockerContainer}, true)
 	mockClient.EXPECT().RemoveContainer(gomock.Any(), dockerContainer.DockerName, gomock.Any()).Return(nil)
-	mockCredentialsManager.EXPECT().RemoveExternalCredentialsId("externalInstanceCredsId")
 	mockImageManager.EXPECT().RemoveContainerReferenceFromImageState(container).Return(nil)
 	mockState.EXPECT().RemoveTask(mTask.Task)
+	mockCredentialsManager.EXPECT().RemoveExternalCredentialsId("externalInstanceCredsId")
 	mockResource.EXPECT().Cleanup()
 	mockResource.EXPECT().GetName()
 	mTask.cleanupTask(taskStoppedDuration)

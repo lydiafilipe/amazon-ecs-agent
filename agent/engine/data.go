@@ -57,7 +57,7 @@ func (engine *DockerTaskEngine) loadTasks() error {
 			engine.state.AddTaskIPAddress(ip, task.Arn)
 		}
 
-		if externalInstanceCredsId := task.ExternalInstanceCredentialsID; externalInstanceCredsId != "" {
+		if externalInstanceCredsId := task.GetExternalInstanceCredentialsID(); externalInstanceCredsId != "" {
 			engine.credentialsManager.SetTaskExternalCredentialsId(externalInstanceCredsId)
 		}
 	}

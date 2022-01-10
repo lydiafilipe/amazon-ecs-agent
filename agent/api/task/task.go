@@ -229,6 +229,9 @@ type Task struct {
 	credentialsID                string
 	credentialsRelativeURIUnsafe string
 
+	// ExternalInstanceCredentialsID is an identifier stored with the task for the external instance credentials.
+	// This is mainly used by the external instance credentials endpoint, which is used by the awslogs driver to obtain credentials
+	// for external instances, to ensure it is only used for tasks that require it.
 	ExternalInstanceCredentialsID string
 
 	// ENIs is the list of Elastic Network Interfaces assigned to this task. The
@@ -2057,6 +2060,26 @@ func (task *Task) GetExecutionCredentialsID() string {
 	defer task.lock.RUnlock()
 
 	return task.ExecutionCredentialsID
+}
+
+// SetExternalInstanceCredentialsID sets the external instance credentials id for the task
+// if it is not already set. Returns true if the id changed, false if not
+func (task *Task) SetExternalInstanceCredentialsID(id string) bool {
+	task.lock.Lock()
+	defer task.lock.Unlock()
+	if task.ExternalInstanceCredentialsID == "" {
+		task.ExternalInstanceCredentialsID = id
+		return true
+	}
+	return false
+}
+
+// GetExternalInstanceCredentialsID gets the external instance credentials id for the task
+func (task *Task) GetExternalInstanceCredentialsID() string {
+	task.lock.RLock()
+	defer task.lock.RUnlock()
+
+	return task.ExternalInstanceCredentialsID
 }
 
 // GetDesiredStatus gets the desired status of the task
