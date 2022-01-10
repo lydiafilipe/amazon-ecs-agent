@@ -1083,7 +1083,7 @@ func (engine *DockerTaskEngine) createContainer(task *apitask.Task, container *a
 		if err != nil {
 			return dockerapi.DockerContainerMetadata{Error: apierrors.NamedError(err)}
 		}
-	} else if credentials.ShouldSetExternalCredsEndpoint(engine.cfg) {
+	} else if credentials.ShouldSetExternalCredsEndpoint(engine.cfg) && hostConfig.LogConfig.Type == string(dockerclient.AWSLogsDriver) {
 		if hostConfig.LogConfig.Config == nil {
 			hostConfig.LogConfig.Config = map[string]string{}
 		}

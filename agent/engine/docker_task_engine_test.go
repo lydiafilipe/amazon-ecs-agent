@@ -3661,9 +3661,7 @@ func TestAWSLogCredsEndpointExternal(t *testing.T) {
 			if tc.isExternal {
 				cfg.External = config.BooleanDefaultFalse{Value: config.ExplicitlyEnabled}
 			}
-			if tc.awslogsSupport {
-				cfg.AvailableLoggingDrivers = append(cfg.AvailableLoggingDrivers, dockerclient.AWSLogsDriver)
-			}
+			cfg.AvailableLoggingDrivers = append(cfg.AvailableLoggingDrivers, dockerclient.AWSLogsDriver)
 
 			ctx, cancel := context.WithCancel(context.TODO())
 			defer cancel()
